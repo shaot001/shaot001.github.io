@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search> 
+  
+  
+    
+    <entry>
+      <title>docker拉取镜像失败</title>
+      <link href="2021/06/03/imagePullReset/"/>
+      <url>2021/06/03/imagePullReset/</url>
+      
+        <content type="html"><![CDATA[<p>使用docker拉取镜像报错</p><h1 id="问题现象："><a href="#问题现象：" class="headerlink" title="问题现象："></a>问题现象：</h1><p>使用docker拉取镜像报错</p><p><img src="/2021/06/03/imagePullReset/%E6%8B%89%E5%8F%96%E9%95%9C%E5%83%8F%E6%8A%A5%E9%94%99.png" alt="拉取镜像报错" loading="lazy"><em>拉取镜像报错</em></p><p>retry 次数超出之后就会直接报错如下</p><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token builtin class-name">read</span> tcp xx.xx.xx.xx:38762-<span class="token operator">></span>xx.xx.xx.xx:28086: read: connection reset by peer</code></pre><p>这个问题一般在公网环境下因为配置的docker官方镜像源，网络较慢或者国内的墙导致拉取不下来，配置阿里云或者其他的docker镜像加速地址即可解决，但此次我们是内网地址，所以并不是上述问题。</p><h1 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h1><p>发现有一层一直无法拉取</p><p>此时查看docker报错如下</p><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token assign-left variable">level</span><span class="token operator">=</span>error <span class="token assign-left variable">msg</span><span class="token operator">=</span><span class="token string">"Download failed, retrying: read tcp xx.xx.xx.xx:38750->xxx.xxx.xxx.xxx:28086: read: connection reset by peer"</span></code></pre><p>尝试更换docker版本为18.09.5、20.20.6之后问题均依旧存在</p><p>尝试使用同机房同模板的初始机器直接安装docker仍旧存在问题</p><h2 id="使用tcpdump抓包分析网络情况"><a href="#使用tcpdump抓包分析网络情况" class="headerlink" title="使用tcpdump抓包分析网络情况"></a>使用tcpdump抓包分析网络情况</h2><pre class="language-bash" data-language="bash"><code class="language-bash">tcpdump -i ens192   <span class="token function">host</span> <span class="token operator">&lt;</span>镜像仓库地址<span class="token operator">></span> and port <span class="token operator">&lt;</span>镜像仓库端口<span class="token operator">></span> -s <span class="token number">0</span> -w test2.cap</code></pre><p>发现请求大部分都是正常的，这也对应访问镜像仓库的几个接口</p><p><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE.png" alt="抓包" loading="lazy"></p><h3 id="1-鉴权"><a href="#1-鉴权" class="headerlink" title="1.鉴权"></a>1.鉴权</h3><p><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE2.png" alt="鉴权" loading="lazy"></p><h3 id="2-使用token访问要拉取的镜像版本"><a href="#2-使用token访问要拉取的镜像版本" class="headerlink" title="2.使用token访问要拉取的镜像版本"></a>2.使用token访问要拉取的镜像版本</h3><p><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE3.png" alt="拉取镜像" loading="lazy"></p><h3 id="3-拉取每一层镜像"><a href="#3-拉取每一层镜像" class="headerlink" title="3.拉取每一层镜像"></a>3.拉取每一层镜像</h3><p><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE4.png" alt="拉取镜像" loading="lazy"></p><h3 id="4-下面就是数据包经过握手之后的分段传输"><a href="#4-下面就是数据包经过握手之后的分段传输" class="headerlink" title="4.下面就是数据包经过握手之后的分段传输"></a>4.下面就是数据包经过握手之后的分段传输</h3><p><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE5.png" alt="拉取镜像" loading="lazy"></p><h3 id="5-下面问题就来了，有一层请求没有成功直接被reset了"><a href="#5-下面问题就来了，有一层请求没有成功直接被reset了" class="headerlink" title="5.下面问题就来了，有一层请求没有成功直接被reset了"></a>5.下面问题就来了，有一层请求没有成功直接被reset了</h3><p>TCP Previous segment not captured，这里就说明TCP连接被Reset了<br>原因可以参考<a href="https://blog.csdn.net/ixidof/article/details/8049667">https://blog.csdn.net/ixidof/article/details/8049667</a><br><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE6.png" alt="拉取镜像" loading="lazy"></p><p>查看具体的请求header<br><img src="/2021/06/03/imagePullReset/%E6%8A%93%E5%8C%85%E6%88%AA%E5%9B%BE7.png" alt="拉取镜像" loading="lazy"></p><h1 id="问题定位"><a href="#问题定位" class="headerlink" title="问题定位"></a>问题定位</h1><p>可以发现正好对应我们上图拉镜像拉不下来的层911b8422b695<br>我们直接通过抓包的请求拼接URL访问这个请求<br>curl -H “Authorization: Bearer token”  <a href="http://xx.xx.xxx.xx:80xx/v2/cnpcrd/test/blobs/sha256:911b8422b695c8a6721bd5097f920515e35648254c5c7b1cc8aeeaca149b50b9">http://xx.xx.xxx.xx:80xx/v2/cnpcrd/test/blobs/sha256:911b8422b695c8a6721bd5097f920515e35648254c5c7b1cc8aeeaca149b50b9</a><br>报错如下<br>curl: (56) Recv failure: Connection reset by peer<br>这又和前面docker的报错对应上了<br>通过和甲方沟通反馈 确认为安全设备的IPS策略拦截了这个请求。</p><p>下面是安全部门反馈的信息<br><img src="/2021/06/03/imagePullReset/%E5%8F%8D%E9%A6%88%E6%88%AA%E5%9B%BE1.jpg" alt="反馈" loading="lazy"><br>使用dive分析这个拉取不下来的镜像，发现<br>我们拉取无法拉取的镜像为第二层，此层添加了一个redis账户，镜像使用了此层的/etc/passwd文件，所以IPS安全策略将此拦截了。<br><img src="/2021/06/03/imagePullReset/%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90.png" alt="镜像分析" loading="lazy"></p><h1 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h1><p>关闭掉了安全策略IPS</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> linux </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> docker </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>photo2</title>
+      <link href="2021/06/02/photo2/"/>
+      <url>2021/06/02/photo2/</url>
+      
+        <content type="html"><![CDATA[<p>哈哈哈</p><p><img src="/2021/06/02/photo2/test.png" alt="sss" loading="lazy"><em>谷歌浏览器 Audits - Lighthouse 检测分数</em></p>]]></content>
+      
+      
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>各种工具代理设置</title>
+      <link href="2021/06/01/%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE/"/>
+      <url>2021/06/01/%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE/</url>
+      
+        <content type="html"><![CDATA[<h1 id="yum代理"><a href="#yum代理" class="headerlink" title="yum代理"></a>yum代理</h1><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token function">vi</span> /etc/profile<span class="token builtin class-name">export</span> <span class="token assign-left variable">http_proxy</span><span class="token operator">=</span>http://127.0.0.1:1080<span class="token builtin class-name">export</span> <span class="token assign-left variable">https_proxy</span><span class="token operator">=</span>http://127.0.0.1:1080<span class="token builtin class-name">export</span> <span class="token assign-left variable">no_proxy</span><span class="token operator">=</span><span class="token number">192.168</span>.179.136,192.168.179.137.192.168.2.138,localhost,127.0.0.1</code></pre><h1 id="ansible配置代理-yum"><a href="#ansible配置代理-yum" class="headerlink" title="ansible配置代理(yum)"></a>ansible配置代理(yum)</h1><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token function">vi</span> /etc bashrc<span class="token builtin class-name">export</span> <span class="token assign-left variable">http_proxy</span><span class="token operator">=</span>http://127.0.0.1:1080<span class="token builtin class-name">export</span> <span class="token assign-left variable">https_proxy</span><span class="token operator">=</span>http://127.0.0.1:1080<span class="token builtin class-name">export</span> <span class="token assign-left variable">no_proxy</span><span class="token operator">=</span><span class="token number">192.168</span>.179.136,192.168.179.137.192.168.2.138,localhost,127.0.0.1</code></pre><h1 id="git配置代理"><a href="#git配置代理" class="headerlink" title="git配置代理"></a>git配置代理</h1><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token function">git</span> config --global http.proxy http://127.0.0.1:1080<span class="token comment"># git clone https://...</span><span class="token function">git</span> config --global https.proxy http://127.0.0.1:1080<span class="token comment"># git clone git://...</span><span class="token function">git</span> config --global core.gitproxy http://127.0.0.1:1080取消代理<span class="token function">git</span> config --global --unset http.proxy</code></pre><h1 id="windows加代理"><a href="#windows加代理" class="headerlink" title="windows加代理"></a>windows加代理</h1><pre class="language-bash" data-language="bash"><code class="language-bash">windows加代理<span class="token builtin class-name">set</span> <span class="token assign-left variable">http_proxy</span><span class="token operator">=</span>http://127.0.0.1:1080<span class="token builtin class-name">set</span> <span class="token assign-left variable">https_proxy</span><span class="token operator">=</span>http://127.0.0.1:1080</code></pre><h1 id="docker代理"><a href="#docker代理" class="headerlink" title="docker代理"></a>docker代理</h1><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token function">mkdir</span> -p /etc/systemd/system/docker.service.d<span class="token function">vi</span> /etc/systemd/system/docker.service.d/http-proxy.conf<span class="token punctuation">[</span>Service<span class="token punctuation">]</span><span class="token assign-left variable">Environment</span><span class="token operator">=</span><span class="token string">"HTTP_PROXY=http://127.0.0.1:1080"</span> <span class="token string">"HTTPS_PROXY=http://127.0.0.1:1080"</span> <span class="token string">"NO_PROXY=localhost,127.0.0.1"</span></code></pre><h1 id="npm代理"><a href="#npm代理" class="headerlink" title="npm代理"></a>npm代理</h1><pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token function">npm</span> config <span class="token builtin class-name">set</span> <span class="token assign-left variable">proxy</span><span class="token operator">=</span>http://10.22.98.21:8080<span class="token function">npm</span> config <span class="token builtin class-name">set</span> https-proxy<span class="token operator">=</span>http://10.22.98.21:8080取消代理<span class="token function">npm</span> config delete proxy<span class="token function">npm</span> config delete https-proxynpm配置镜像源<span class="token function">npm</span> config <span class="token builtin class-name">set</span> registry http://registry.npm.taobao.org</code></pre>]]></content>
+      
+      
+      <categories>
+          
+          <category> linux </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> proxy </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+  
+  
+</search>
