@@ -40,7 +40,7 @@
 <meta property="og:image" content="http://shaot001.github.io/2021/06/03/imagePullReset/%E5%8F%8D%E9%A6%88%E6%88%AA%E5%9B%BE1.jpg">
 <meta property="og:image" content="http://shaot001.github.io/2021/06/03/imagePullReset/%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90.png">
 <meta property="article:published_time" content="2021-06-03T05:14:14.000Z">
-<meta property="article:modified_time" content="2021-06-03T06:21:42.001Z">
+<meta property="article:modified_time" content="2021-06-03T06:23:45.701Z">
 <meta property="article:author" content="Shaot">
 <meta property="article:tag" content="docker">
 <meta name="twitter:card" content="summary">
@@ -52,7 +52,7 @@
 <p>这个问题一般在公网环境下因为配置的docker官方镜像源，网络较慢或者国内的墙导致拉取不下来，配置阿里云或者其他的docker镜像加速地址即可解决，但此次我们是内网地址，所以并不是上述问题。</p>
 <h1 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h1><p>发现有一层一直无法拉取</p>
 <p>此时查看docker报错如下</p>
-<pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token assign-left variable">level</span><span class="token operator">=</span>error <span class="token assign-left variable">msg</span><span class="token operator">=</span><span class="token string">"Download failed, retrying: read tcp 10.65.64.178:38750->xxx.xxx.xxx.xxx:28086: read: connection reset by peer"</span></code></pre>
+<pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token assign-left variable">level</span><span class="token operator">=</span>error <span class="token assign-left variable">msg</span><span class="token operator">=</span><span class="token string">"Download failed, retrying: read tcp xx.xx.xx.xx:38750->xxx.xxx.xxx.xxx:28086: read: connection reset by peer"</span></code></pre>
 
 <p>尝试更换docker版本为18.09.5、20.20.6之后问题均依旧存在</p>
 <p>尝试使用同机房同模板的初始机器直接安装docker仍旧存在问题</p>
