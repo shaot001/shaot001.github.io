@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>go并发</title>
+      <link href="2021/06/04/goCoroutines/"/>
+      <url>2021/06/04/goCoroutines/</url>
+      
+        <content type="html"><![CDATA[<h1 id="1-CSP并发理论"><a href="#1-CSP并发理论" class="headerlink" title="1.CSP并发理论"></a>1.CSP并发理论</h1><p>异步asyn 并行：多个任务并发执行</p><p>同步sync 串行：多个任务依次执行</p><p>阻塞block 某个并发任务由于拿不到资源没法干活，从而无所事事地干等</p><p>进程并发-线程并发-协程并发</p><p>进程是资源分配的最小单位，一个程序的执行单元，每一个main函数就相当于一个进程</p><p>线程是CPU调度的最小单位，一个程序可能要读数据库，可能在做计算操作，通过多线程将CPU执行时间片分摊，让本来是串行执行的任务，不需要等待可以并发执行，但是多线程需要频繁的切换cpu，所以对资源开销很大。线程并发是伪并发</p><p>协程的并发是逻辑上的</p><p>2.并发和并行</p><pre class="language-none"><code class="language-none">A. 多线程程序在一个核的cpu上运行，就是并发。B. 多线程程序在多个核的cpu上运行，就是并行。</code></pre><p>协程和线程</p><pre class="language-none"><code class="language-none">协程：独立的栈空间，共享堆空间，调度由用户自己控制，本质上有点类似于用户级线程，这些用户级线程的调度也是自己实现的。线程：一个线程上可以跑多个协程，协程是轻量级的线程。</code></pre><p>​    并发主要由切换时间片来实现”同时”运行，并行则是直接利用多核实现多线程的运行，go可以设置使用核数，以发挥多核计算机的能力。</p><p>goroutine 奉行通过通信来共享内存，而不是共享内存来通信。</p><p><strong>异步回调</strong>：A线程唤起B线程，令其干活，通知给B一个回调函数，命令B在干完活以后，执行这个函数，这个回调函数会与A线程发生交互 A不必阻塞等待B执行的结果，AB两个线程可以并发执行</p><p><strong>共享内存</strong>：多个并发线程通过共享内存的方式交互数据</p><p>线程安全问题：AB共享的数据可能被C并发修改</p><p><strong>同步锁/资源锁</strong> 为了解决共享内存锁导致的线程安全问题，共享的内存地址在特定时间段被特定线程锁定 加锁期间 其他线程无法访问 带来低效率问题</p><p><strong>死锁</strong> A锁住B的资源 B锁住A要的资源 AB同时阻塞 </p><p><strong>线程池</strong></p><ul><li><p>背景：线程的开销大</p></li><li><p>内存：保存上下文数据</p></li><li><p>CPU：线程调度</p><p>为了避免无度创建线程（内存溢出），在一个池中创建一堆线程，循环利用这些线程，用完了以后重置并丢回池中</p></li><li><p>利弊</p><p>利：谜面五毒创建线程，降低了OOM风险。弊：用不用都占用了一块内存开销</p></li></ul><p>线程并发的弊端 线程内存，啥也不干就拿走1M栈空间  1024条线程就占用1G内存 线程切换占CPU 内存共享不安全 加了锁效率又低下 回调地狱导致并发难度高（因为主线程来回调 不是顺序执行 又乱又难懂）</p><p><strong>CSP模型</strong></p><p>可通信的序列化你进程</p><p>并发的进程间通过管道进行通信</p><p><strong>共享内存VS管道</strong></p><p><strong>内存共享</strong>：通过内存共享通信</p><p><strong>管道</strong>：通过通信共享内存</p><h1 id="多协程"><a href="#多协程" class="headerlink" title="多协程"></a>多协程</h1><p>goruntine ： go +coruntine </p>]]></content>
+      
+      
+      <categories>
+          
+          <category> go </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> go </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>docker拉取镜像失败</title>
       <link href="2021/06/03/imagePullReset/"/>
       <url>2021/06/03/imagePullReset/</url>
@@ -23,19 +48,6 @@
             <tag> docker </tag>
             
         </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>photo2</title>
-      <link href="2021/06/02/photo2/"/>
-      <url>2021/06/02/photo2/</url>
-      
-        <content type="html"><![CDATA[<p>哈哈哈</p><p><img src="/2021/06/02/photo2/test.png" alt="sss" loading="lazy"><em>谷歌浏览器 Audits - Lighthouse 检测分数</em></p>]]></content>
-      
-      
       
     </entry>
     
